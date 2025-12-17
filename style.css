@@ -1,0 +1,211 @@
+/* --- VARIABLES (Adaptadas de tu CSS original) --- */
+:root {
+    --primary-color: #3b82f6;
+    --secondary-color: #1e3a8a;
+    --background-color: #0f172a;
+    --surface-color: #1e293b;
+    --text-color: #f8fafc;
+    --text-muted-color: #94a3b8;
+    --border-color: #334155;
+    --red-alert-color: #ef4444;
+    --green-share-color: #22c55e;
+}
+
+/* Tema Claro (Activado via JS agregando clase al body) */
+body.lightMode {
+    --primary-color: #007bff;
+    --secondary-color: #0056b3;
+    --background-color: #f0f2f5;
+    --surface-color: #ffffff;
+    --text-color: #212529;
+    --text-muted-color: #6c757d;
+    --border-color: #ced4da;
+    --red-alert-color: #dc3545;
+    --green-share-color: #28a745;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-family: sans-serif; /* Fuente segura para Android 5 */
+    overflow: hidden; /* Evita scroll en body */
+    width: 100vw;
+    height: 100vh;
+}
+
+/* --- LOBBY --- */
+.lobbyContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 1rem;
+    position: absolute;
+    top: 0; left: 0; width: 100%;
+    z-index: 1000;
+}
+
+.lobbyCard {
+    background-color: var(--surface-color);
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.lobbyTitle { margin-bottom: 1.5rem; color: var(--primary-color); }
+
+.formGroup { margin-bottom: 1rem; text-align: left; }
+.formLabel { display: block; margin-bottom: 0.5rem; font-weight: bold; font-size: 0.9rem; }
+.formInput {
+    width: 100%; padding: 0.8rem;
+    border-radius: 0.5rem; border: 1px solid var(--border-color);
+    background: var(--background-color); color: var(--text-color);
+}
+
+.joinButton {
+    width: 100%; padding: 1rem;
+    background-color: var(--primary-color); color: white;
+    border: none; border-radius: 0.5rem;
+    font-size: 1.1rem; cursor: pointer; margin-top: 1rem;
+}
+.joinButton:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* --- MAIN APP --- */
+.mainContainer {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    position: relative;
+}
+
+.mainContent {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    height: 100%;
+}
+
+/* --- VIDEO GRID --- */
+.videoGridContainer {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    gap: 10px;
+    overflow-y: auto;
+    background: var(--background-color);
+}
+
+.videoWrapper {
+    position: relative;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid var(--border-color);
+    /* Fallback para aspect-ratio en CSS antiguo */
+    width: 100%;
+    max-width: 600px; 
+    height: 0;
+    padding-bottom: 56.25%; /* 16:9 Aspect Ratio hack */
+}
+
+/* Si hay pantalla compartida, ajustamos tamaños dinámicamente con JS,
+   pero aquí damos estilos base */
+.videoWrapper.isScreen {
+    max-width: 100%;
+}
+
+.videoElement {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+}
+
+.localVideo { transform: scaleX(-1); } /* Espejo para local */
+.localVideo.screenShare { transform: none; } /* No espejo para pantalla */
+
+.userNameLabel {
+    position: absolute; bottom: 8px; left: 8px;
+    background: rgba(0,0,0,0.6); color: white;
+    padding: 4px 8px; border-radius: 4px; font-size: 12px;
+}
+
+/* --- CONTROLES --- */
+.controlsFooter {
+    padding: 10px;
+    background: var(--surface-color);
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+}
+
+.controlButton {
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    width: 45px; height: 45px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+}
+.controlButton.active { background: var(--red-alert-color); color: white; border: none; }
+.controlButton.activeShare { background: var(--green-share-color); color: white; border: none; }
+
+.leaveButton {
+    background: var(--red-alert-color);
+    border: none; color: white;
+    width: 45px; height: 45px;
+    border-radius: 50%; cursor: pointer;
+}
+
+/* --- CHAT SIDEBAR --- */
+.chatSidebar {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 85%; max-width: 300px;
+    background: var(--surface-color);
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    display: flex; flex-direction: column;
+    z-index: 2000;
+    box-shadow: -2px 0 5px rgba(0,0,0,0.3);
+}
+.chatSidebar.open { transform: translateX(0); }
+
+.chatHeader {
+    padding: 15px; border-bottom: 1px solid var(--border-color);
+    display: flex; justify-content: space-between; align-items: center;
+}
+.chatMessages {
+    flex: 1; padding: 10px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.chatForm {
+    padding: 10px; border-top: 1px solid var(--border-color);
+    display: flex; gap: 5px;
+}
+.chatInput { flex: 1; padding: 8px; border-radius: 20px; border: none; }
+.chatSendButton {
+    background: var(--primary-color); color: white;
+    border: none; width: 35px; height: 35px; border-radius: 50%;
+}
+
+.message {
+    padding: 8px 12px; border-radius: 10px;
+    max-width: 85%; word-wrap: break-word; font-size: 0.9rem;
+}
+.message.me { align-self: flex-end; background: var(--primary-color); color: white; }
+.message.other { align-self: flex-start; background: var(--border-color); color: var(--text-color); }
+.message.system { align-self: center; background: transparent; color: var(--text-muted-color); font-size: 0.8rem; }
+.msgUser { font-size: 0.75rem; font-weight: bold; margin-bottom: 2px; display: block; }

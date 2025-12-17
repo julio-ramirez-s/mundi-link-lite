@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mundi-Link Lite</title>
+    <!-- Iconos FontAwesome (Compatible y ligero) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="darkMode"> <!-- Por defecto Dark Mode -->
+
+    <!-- LOBBY -->
+    <div id="lobbyContainer" class="lobbyContainer">
+        <div class="lobbyCard">
+            <h1 class="lobbyTitle">Mundi-Link Lite</h1>
+            <div class="formGroup">
+                <label class="formLabel">Tu Nombre</label>
+                <input type="text" id="usernameInput" class="formInput" placeholder="Ingresa tu nombre...">
+            </div>
+            <div class="formGroup">
+                <label class="formLabel">ID de la Sala</label>
+                <input type="text" id="roomIdInput" class="formInput" value="main-room" readonly>
+            </div>
+            <button id="joinBtn" class="joinButton">
+                <i class="fa fa-sign-in"></i> Entrar
+            </button>
+            <p id="statusMsg" class="loadingMessage"></p>
+        </div>
+    </div>
+
+    <!-- SALA DE LLAMADA -->
+    <div id="callContainer" class="mainContainer" style="display: none;">
+        
+        <!-- GRID DE VIDEO -->
+        <div class="mainContent">
+            <div id="videoGrid" class="videoGridContainer">
+                <!-- Los videos se inyectan aquí via JS -->
+            </div>
+
+            <!-- CONTROLES -->
+            <footer class="controlsFooter">
+                <button id="muteBtn" class="controlButton" title="Silenciar">
+                    <i class="fa fa-microphone"></i>
+                </button>
+                <button id="videoBtn" class="controlButton" title="Cámara">
+                    <i class="fa fa-video-camera"></i>
+                </button>
+                <button id="shareBtn" class="controlButton" title="Compartir Pantalla (Solo PC)">
+                    <i class="fa fa-desktop"></i>
+                </button>
+                <button id="chatToggleBtn" class="controlButton" title="Chat">
+                    <i class="fa fa-comments"></i>
+                </button>
+                <div class="themeControls">
+                    <button id="themeDarkBtn" class="controlButton" title="Modo Oscuro">
+                        <i class="fa fa-moon-o"></i>
+                    </button>
+                    <button id="themeLightBtn" class="controlButton" title="Modo Claro">
+                        <i class="fa fa-sun-o"></i>
+                    </button>
+                </div>
+                <button id="leaveBtn" class="leaveButton" title="Salir">
+                    <i class="fa fa-sign-out"></i>
+                </button>
+            </footer>
+        </div>
+
+        <!-- CHAT SIDEBAR -->
+        <aside id="chatSidebar" class="chatSidebar">
+            <header class="chatHeader">
+                <h2 class="chatTitle">Chat</h2>
+                <button id="closeChatBtn" class="closeChatButton">
+                    <i class="fa fa-times"></i>
+                </button>
+            </header>
+            <div id="chatMessages" class="chatMessages">
+                <!-- Mensajes aquí -->
+            </div>
+            <form id="chatForm" class="chatForm">
+                <input type="text" id="chatInput" class="chatInput" placeholder="Escribe..." autocomplete="off">
+                <button type="submit" class="chatSendButton">
+                    <i class="fa fa-paper-plane"></i>
+                </button>
+            </form>
+        </aside>
+
+    </div>
+
+    <!-- LIBRERÍAS LEGACY (CDN) -->
+    <!-- Socket.io 2.3.0 (Compatible con v2.x backend) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+    <!-- PeerJS (Versión estable que funciona con ES5) -->
+    <script src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script>
+    
+    <!-- Lógica de la App -->
+    <script src="app.js"></script>
+</body>
+</html>
