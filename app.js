@@ -163,12 +163,14 @@ function initSocketAndPeer() {
     // 2. Conectar Socket.io (Versión 4.x Client - Más robusto)
     try {
         state.socket = io(SERVER_URL, {
-            // Forzamos el uso de WebSocket (si es posible) y aumentamos el timeout
+            // Configuración para Render: confiamos en que el cliente negociará,
+            // pero hacemos la conexión más robusta con timeouts y reconexión.
             transports: ['websocket', 'polling'],
-            upgrade: true, 
+            timeout: 20000, // Tiempo límite de conexión (20s)
+            reconnectionAttempts: Infinity, // Intentos infinitos de reconexión
+            reconnectionDelay: 1000, // Primer retraso de reconexión (1s)
+            reconnectionDelayMax: 5000, // Retraso máximo (5s)
             withCredentials: false, 
-            timeout: 20000, // 20 segundos de timeout (el default es 10)
-            reconnectionAttempts: 5 
         });
     } catch (e) {
         console.error("Error al inicializar Socket.io:", e);
