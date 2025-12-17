@@ -1,5 +1,5 @@
 // app.js - ES5 Puro compatible con Android 5.1
-// CORRECCIÓN: Socket.io v4 client para compatibilidad con backend existente
+// CORRECCIÓN: Socket.io v4 client y conexión más robusta.
 
 // --- ESTADO GLOBAL ---
 var state = {
@@ -17,6 +17,7 @@ var state = {
 };
 
 // URL del servidor (Backend original)
+// Asegúrate de que este servidor esté ACTIVO. Si está en Render.com, podría estar dormido.
 var SERVER_URL = "https://meet-clone-v0ov.onrender.com";
 
 // --- ELEMENTOS DOM (Cache) ---
@@ -68,6 +69,7 @@ window.onload = function() {
 // --- LÓGICA DE CONEXIÓN ROBUSTA (Cámara) ---
 
 function getRobustMedia() {
+    // Función de soporte para acceder a getUserMedia en navegadores antiguos
     var getUserMedia = (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) 
         ? function(c) { return navigator.mediaDevices.getUserMedia(c); }
         : function(c) {
@@ -89,9 +91,6 @@ function getRobustMedia() {
     // 2. Default
     var constraintsDefault = { audio: true, video: true };
 
-    // 3. Audio Only
-    var constraintsAudio = { audio: true, video: false };
-
     return new Promise(function(resolve, reject) {
         console.log("Intento 1: Video Baja Resolución");
         getUserMedia(constraintsLow)
@@ -109,9 +108,13 @@ function getRobustMedia() {
                         console.warn("Fallo intento 2:", err2.name);
                         console.log("Intento 3: Solo Audio");
                         dom.statusMsg.innerText = "Cámara falló. Entrando con solo audio...";
+                        
+                        // 3. Audio Only
+                        var constraintsAudio = { audio: true, video: false };
                         getUserMedia(constraintsAudio)
                             .then(function(audioStream) {
-                                alert("No se pudo iniciar la cámara. Modo SOLO AUDIO activado.");
+                                // No usamos alert, sino el mensaje
+                                dom.statusMsg.innerText = "Advertencia: Solo Audio. Entrando a la sala...";
                                 resolve(audioStream);
                             })
                             .catch(function(err3) {
@@ -124,7 +127,10 @@ function getRobustMedia() {
 
 function joinRoom() {
     var name = dom.usernameInput.value;
-    if (!name) { alert("Por favor ingresa un nombre"); return; }
+    if (!name) { 
+        alert("Por favor ingresa un nombre"); 
+        return; 
+    }
     
     state.userName = name;
     dom.statusMsg.innerText = "Conectando...";
@@ -145,65 +151,74 @@ function joinRoom() {
             initSocketAndPeer();
         })
         .catch(function(err) {
-            console.error("Error fatal:", err);
-            alert("Error de acceso: " + err.name);
-            dom.statusMsg.innerText = "Error: " + err.name;
+            console.error("Error fatal al obtener medios:", err);
+            // Usamos un modal o un mensaje en lugar de alert()
+            dom.statusMsg.innerText = "Error de acceso: " + (err.name || "Desconocido") + ". Verifica permisos.";
             dom.joinBtn.disabled = false;
         });
 }
 
 function initSocketAndPeer() {
-    // 2. Conectar Socket.io (Versión 4.x Client)
-    // Usamos 'transports' para intentar websocket y evitar polling si causa CORS en entornos estrictos
+    // 2. Conectar Socket.io (Versión 4.x Client - Más robusto)
     try {
         state.socket = io(SERVER_URL, {
+            // Forzamos el uso de WebSocket (si es posible) y aumentamos el timeout
             transports: ['websocket', 'polling'],
-            withCredentials: false // Evita problemas con CORS wildcard (*)
+            upgrade: true, 
+            withCredentials: false, 
+            timeout: 20000, // 20 segundos de timeout (el default es 10)
+            reconnectionAttempts: 5 
         });
     } catch (e) {
         console.error("Error al inicializar Socket.io:", e);
-        alert("Error crítico conectando al servidor de chat.");
+        dom.statusMsg.innerText = "Error crítico: Fallo en la inicialización de Socket.io.";
         return;
     }
 
     // 3. Conectar PeerJS
     state.myPeer = new Peer(undefined, {
-        host: 'meet-clone-v0ov.onrender.com', 
-        path: '/peerjs/myapp',
+        host: 'meet-clone-v0ov.onrender.com', // Usar el host del servidor
+        path: '/peerjs/myapp', // Asegúrate de que esta ruta sea correcta en el servidor
         secure: true,
         port: 443
     });
 
     state.myPeer.on('open', function(id) {
         console.log("My Peer ID: " + id);
-        // Verificar que el socket esté conectado antes de emitir
-        if (state.socket && state.socket.connected) {
+        
+        // Esperar la conexión del socket antes de emitir join-room
+        if (state.socket.connected) {
              state.socket.emit('join-room', state.roomId, id, state.userName);
+             dom.lobby.style.display = 'none';
+             dom.callRoom.style.display = 'block';
+             dom.statusMsg.innerText = "";
         } else {
-            // Esperar conexión
-            state.socket.on('connect', function() {
+            // Si no está conectado, esperar el evento 'connect'
+            state.socket.once('connect', function() {
+                console.log("Socket re-conectado. Uniéndose a la sala.");
                 state.socket.emit('join-room', state.roomId, id, state.userName);
+                dom.lobby.style.display = 'none';
+                dom.callRoom.style.display = 'block';
+                dom.statusMsg.innerText = "";
             });
         }
-        
-        dom.lobby.style.display = 'none';
-        dom.callRoom.style.display = 'block';
     });
     
     // Manejo de errores de PeerJS
     state.myPeer.on('error', function(err) {
         console.error("PeerJS Error:", err);
-        if (err.type === 'peer-unavailable') {
-            // Ignorar errores de peer no encontrados momentáneamente
-        } else {
-            // alert("Error de conexión P2P: " + err.type);
-        }
+        dom.statusMsg.innerText = "Error P2P: " + err.type;
     });
 
     // --- EVENTOS SOCKET ---
+    state.socket.on('connect', function() {
+        console.log("Socket.io conectado exitosamente.");
+    });
+    
     state.socket.on('connect_error', function(err) {
         console.error("Error de conexión Socket:", err);
-        // No mostramos alert constante, pero logueamos
+        dom.statusMsg.innerText = "Error de conexión: " + (err.message || 'El servidor no responde.');
+        // Reintentar si el error fue un timeout. El cliente ya reintenta por sí mismo.
     });
 
     state.socket.on('user-joined', function(data) {
@@ -234,11 +249,16 @@ function initSocketAndPeer() {
         addMessageSystem(data.userName + " está compartiendo pantalla.");
     });
     
-    // Evento para parar pantalla compartida (Faltaba en la versión anterior)
     state.socket.on('user-stopped-screen-share', function(userId) {
-       // El stream se cierra solo via PeerJS 'close', pero podemos forzar limpieza UI si es necesario
-       // PeerJS maneja esto en el evento call.on('close')
+       // No necesitamos hacer nada aquí explícitamente, PeerJS maneja el cierre de la llamada de pantalla.
+       // Se puede agregar un mensaje de sistema si se desea.
     });
+    
+    state.socket.on('reconnect_failed', function() {
+        console.error("Fallo la reconexión con Socket.io después de varios intentos.");
+        dom.statusMsg.innerText = "Conexión perdida. Por favor, recarga la página.";
+    });
+
 
     // --- EVENTOS PEERJS ---
     state.myPeer.on('call', function(call) {
@@ -285,10 +305,12 @@ function connectToNewUser(userId, stream, remoteName) {
 
         state.peers[userId] = call;
 
+        // Si estoy compartiendo pantalla, también llamo al nuevo usuario con la pantalla.
         if (state.myScreenStream) {
-            state.myPeer.call(userId, state.myScreenStream, {
+            var screenCall = state.myPeer.call(userId, state.myScreenStream, {
                 metadata: { userName: state.userName, isScreenShare: true }
             });
+            // Almacenar también la llamada de pantalla si es necesario para el control, pero es efímera.
         }
     }, 1000); // Esperar 1s antes de llamar
 }
@@ -298,14 +320,15 @@ function connectToNewUser(userId, stream, remoteName) {
 function addVideo(stream, name, isLocal, isScreen, id) {
     // Evitar duplicados
     var finalId = 'video-' + (id || 'local' + (isScreen ? '-screen' : ''));
-    if (document.getElementById(finalId)) return;
+    var existingWrapper = document.getElementById(finalId);
+    if (existingWrapper) return; // Ya existe
 
     var wrapper = document.createElement('div');
     wrapper.className = 'videoWrapper';
     if (isScreen) wrapper.className += ' isScreen';
     wrapper.id = finalId;
 
-    var hasVideoTrack = stream.getVideoTracks().length > 0;
+    var hasVideoTrack = stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled;
 
     var video = document.createElement('video');
     video.className = 'videoElement';
@@ -315,6 +338,11 @@ function addVideo(stream, name, isLocal, isScreen, id) {
     video.autoplay = true;
     video.playsInline = true; 
     if (isLocal) video.muted = true; 
+    
+    // Iniciar la carga del video
+    video.onloadedmetadata = function(e) {
+        video.play();
+    };
 
     var label = document.createElement('div');
     label.className = 'userNameLabel';
@@ -340,6 +368,14 @@ function addVideo(stream, name, isLocal, isScreen, id) {
 function removeVideo(id) {
     var el = document.getElementById('video-' + id);
     if (el) {
+        // Detener los streams asociados antes de remover (especialmente si es local)
+        var videoElement = el.querySelector('video');
+        if (videoElement && videoElement.srcObject) {
+            videoElement.srcObject.getTracks().forEach(function(track) {
+                // Solo detener si no es el stream principal (ya que ese se detiene al salir)
+                // Esto es más relevante para el stream de pantalla remota
+            });
+        }
         el.parentNode.removeChild(el);
     }
 }
@@ -367,7 +403,8 @@ function toggleVideo() {
         dom.videoBtn.className = state.isVideoOff ? 'controlButton active' : 'controlButton';
         dom.videoBtn.innerHTML = state.isVideoOff ? '<i class="fa fa-video-camera"></i> <i class="fa fa-ban" style="font-size: 10px;"></i>' : '<i class="fa fa-video-camera"></i>';
     } else {
-        alert("Modo solo audio: No hay cámara disponible para alternar.");
+        // En lugar de alert, usamos el mensaje de estado si la cámara nunca fue capturada
+        dom.statusMsg.innerText = "Cámara no disponible: Modo solo audio.";
     }
 }
 
@@ -375,34 +412,45 @@ function toggleScreenShare() {
     if (state.myScreenStream) {
         stopScreenShare();
     } else {
-        navigator.mediaDevices.getDisplayMedia({ video: true })
+        // Aseguramos que la función exista
+        if (!navigator.mediaDevices.getDisplayMedia) {
+             dom.statusMsg.innerText = "Compartir pantalla no soportado en este dispositivo/navegador.";
+             return;
+        }
+
+        navigator.mediaDevices.getDisplayMedia({ video: true, audio: false }) // Audio solo si es necesario
             .then(function(stream) {
                 state.myScreenStream = stream;
                 dom.shareBtn.className = 'controlButton activeShare';
                 
+                // Mostrar mi propia pantalla compartida
                 addVideo(stream, state.userName, true, true, 'local-screen');
                 state.socket.emit('start-screen-share', state.myPeer.id, state.userName);
 
+                // Llamar a todos los peers con el stream de la pantalla
                 for (var peerId in state.peers) {
-                    if (!peerId.includes('_screen')) { 
+                    if (!peerId.includes('_screen')) { // Solo llamar a los peers de video principal
                         state.myPeer.call(peerId, stream, {
                             metadata: { userName: state.userName, isScreenShare: true }
                         });
                     }
                 }
 
+                // Si el usuario detiene la compartición usando los controles del navegador
                 stream.getVideoTracks()[0].onended = function() {
                     stopScreenShare();
                 };
             })
             .catch(function(err) {
-                console.error("Error compartir pantalla", err);
+                console.error("Error al compartir pantalla", err);
+                 dom.statusMsg.innerText = "Fallo al capturar la pantalla. Permiso denegado o error.";
             });
     }
 }
 
 function stopScreenShare() {
     if (state.myScreenStream) {
+        // Detener todas las pistas de mi stream de pantalla
         state.myScreenStream.getTracks().forEach(function(t) { t.stop(); });
         state.myScreenStream = null;
         dom.shareBtn.className = 'controlButton';
@@ -447,6 +495,7 @@ function addMessageSystem(text) {
     div.className = 'message system';
     div.innerText = text;
     dom.chatMessages.appendChild(div);
+    dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
 }
 
 // --- TEMA ---
@@ -461,11 +510,30 @@ function applyTheme(theme) {
     state.theme = theme;
     if (theme === 'light') {
         document.body.classList.add('lightMode');
+        document.body.classList.remove('darkMode');
     } else {
         document.body.classList.remove('lightMode');
+        document.body.classList.add('darkMode');
     }
 }
 
 function leaveRoom() {
+    // Limpieza de streams
+    if (state.myStream) {
+        state.myStream.getTracks().forEach(function(track) { track.stop(); });
+    }
+    stopScreenShare();
+    
+    // Desconexión de socket (si está conectado)
+    if (state.socket) {
+        state.socket.disconnect();
+    }
+    
+    // Desconexión de PeerJS
+    if (state.myPeer) {
+        state.myPeer.destroy();
+    }
+    
+    // Recargar la página para volver al lobby de forma limpia
     window.location.reload();
 }
