@@ -128,7 +128,8 @@ function getRobustMedia() {
 function joinRoom() {
     var name = dom.usernameInput.value;
     if (!name) { 
-        alert("Por favor ingresa un nombre"); 
+        // Reemplazar alert con mensaje en la UI
+        dom.statusMsg.innerText = "Por favor ingresa un nombre."; 
         return; 
     }
     
@@ -175,12 +176,11 @@ function initSocketAndPeer() {
         return;
     }
 
-    // 3. Conectar PeerJS
+    // 3. Conectar PeerJS (Simplificado para Render)
     state.myPeer = new Peer(undefined, {
-        host: 'meet-clone-v0ov.onrender.com', // Usar el host del servidor
+        // Al estar en el mismo host que el socket, podemos simplificar la configuración.
+        host: 'meet-clone-v0ov.onrender.com', 
         path: '/peerjs/myapp', // Asegúrate de que esta ruta sea correcta en el servidor
-        secure: true,
-        port: 443
     });
 
     state.myPeer.on('open', function(id) {
